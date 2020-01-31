@@ -1,0 +1,30 @@
+<html>
+<head>
+  <title>欢迎光临三落大厦网站</title>
+</head>
+<body>
+  <h1>欢迎光临三落大厦网站</h1>
+  <table border="1px">
+    <tr>
+      <th>房号</th>
+      <th>当前读数</th>
+      <th>上个月读数</th>
+      <th>房号</th>
+      <th>当前读数</th>
+      <th>上个月读数</th>
+    </tr>
+  {% for i in room_data %}
+    <!--<a href="/page/{{ i }}">{{ i }}</a><br> -->
+    <tr>
+      <td><a href="/page/{{ i[0] }}">{{ i[0] }}</a></td>
+      <td>{{ i[1] }}</td>
+      <td>{{ i[2] }}</td>
+      <td><a href="/page/{{ i[4] }}">{{ i[4] }}</a></td>
+      <td>{{ i[5] }}</td>
+      <td>{{ i[6] }}</td>
+    </tr>
+  {% endfor %}
+  </table>
+  <h3>以上数据更新时间为：{{ room_data[0][7] }}</h3>
+</body>
+</html>

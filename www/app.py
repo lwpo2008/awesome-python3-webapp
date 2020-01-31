@@ -1,21 +1,31 @@
-import logging; logging.basicConfig(level=logging.INFO)
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+from flask import Flask, request, render_template
+import wattmeter
+import config
 
-import asyncio, os, json, time
-from datetime import datetime
+app = Flask(__name__)
 
-from aiohttp import web
+def get_data_from_db():
+	cfg = config.Config()
+	ROOM_DATA = cfg.get()
+	ROOM_DATA2 = [[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
+	for i in range(14):
+		ROOM_DATA2[i].append(ROOM_DATA[2*i][1])
+		ROOM_DATA2[i].append(ROOM_DATA[2*i][3])
+		ROOM_DATA2[i].append(ROOM_DATA[2*i][4])
+		ROOM_DATA2[i].append(ROOM_DATA[2*i][6])
+		ROOM_DATA2[i].append(ROOM_DATA[2*i+1][1])
+		ROOM_DATA2[i].append(ROOM_DATA[2*i+1][3])
+		ROOM_DATA2[i].append(ROOM_DATA[2*i+1][4])
+		ROOM_DATA2[i].append(ROOM_DATA[2*i+1][6])
 
-def index(request):
-    return web.Response(body=b'<h1>Awesome</h1>',content_type='text/html')
+	del cfg
+	return ROOM_DATA2
 
-@asyncio.coroutine
-def init(loop):
-    app = web.Application(loop=loop)
-    app.router.add_route('GET', '/', index)
-    srv = yield from loop.create_server(app.make_handler(), '192.168.1.77',1717)
-    logging.info('server started at http://192.168.1.77:1717...')
-    return srv
-
-loop = asyncio.get_event_loop()
-loop.run_until_complete(init(loop))
-loop.run_forever()
+@app.route('/', methods=['GET', 'POST'])
+def home():
+    return render_template('home.html',room_data=get_data_from_db())
+	
+if __name__ == '__main__':
+    app.run(host='192.168.1.77',port=1717,debug=False)

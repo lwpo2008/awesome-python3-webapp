@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import serial
+import time
 
 class ReadMsg():
 	def __init__(self):
@@ -60,6 +61,14 @@ class ReadMsg():
 		self.zxjiesuan1 = ('0x34','0x33','0x34','0x33')					#上1个结算日正向有功
 		self.zuhejiesuan2 = ('0x35','0x33','0x33','0x33')				#上2个结算日组合有功
 		self.zxjiesuan2 = ('0x35','0x33','0x34','0x33')					#上2个结算日正向有功
+
+		self.a_voltge = ('0x33','0x34','0x34','0x35')					#A相电压XXX.X
+		self.a_current = ('0x33','0x34','0x35','0x35')					#A相电流XXX.XXX0
+		self.z_current = ('0x34','0x33','0xB3','0x35')					#零线电流XXX.XXX0 
+		self.active_power = ('0x33','0x33','0x36','0x35')				#有功功率XX.XXXX
+		self.reactive_power = ('0x33','0x33','0x37','0x35')				#无功功率XX.XXXX
+		self.cos = ('0x33','0x33','0x39','0x35')						#功率因素X.XXX0
+		self.temperature = ('0x3B','0x33','0xB3','0x35')				#表内温度XXX.X
 
 	def CreatMsg(self,list,tuple):
 		msg = [hex(x) for x in bytes.fromhex(list[0])]	#地址，16进制数组转为字节串
@@ -168,6 +177,111 @@ class ReadMsg():
 			self.ser.reset_input_buffer()
 		#关闭串口
 		self.ser.close()
+
+	def achieve_variable_data(self,room):
+		#打开串口
+		if self.ser.isOpen():
+			pass
+		else:
+			self.ser.open()
+		#创建字典读取数据
+		data_dict = {'room':room,
+					 'number':self.dianbiao[room][0],
+					 'watt':-1.00,
+					 'prev_watt':-1.00,
+					 'active_power':-1.00,
+					 'reactive_power':-1.00,
+					 'cos':-1.00,
+					 'a_v':-1.00,
+					 'a_i':-1.00,
+					 'a_z':-1.00,
+					 'temp':-1.00,
+					 'time':'none'}
+		#读取正向有功电量
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.zhengxiang))
+		data_dict['watt'] = self.__read()
+		self.ser.reset_input_buffer()
+		#读取上个月正向有功电量
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.zxjiesuan1))
+		data_dict['prev_watt'] = self.__read()
+		self.ser.reset_input_buffer()
+		#读取有功功率
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.active_power))
+		dd = self.__read()
+		if dd == '失败' :
+			data_dict['active_power'] = dd
+		else:
+			data_dict['active_power'] = dd/100
+		self.ser.reset_input_buffer()
+		#读取无功功率
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.reactive_power))
+		data_dict['reactive_power'] = self.__read()
+		self.ser.reset_input_buffer()
+		#读取功率因素
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.cos))
+		dd = self.__read()
+		if dd == '失败' :
+			data_dict['cos'] = dd
+		else:
+			data_dict['cos'] = dd/10
+		self.ser.reset_input_buffer()
+		#读取电压
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.a_voltge))
+		dd = self.__read()
+		if dd == '失败' :
+			data_dict['a_v'] = dd
+		else:
+			data_dict['a_v'] = dd*10
+		self.ser.reset_input_buffer()
+		#读取a电流
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.a_current))
+		dd = self.__read()
+		if dd == '失败' :
+			data_dict['a_i'] = dd
+		else:
+			data_dict['a_i'] = dd/10
+		self.ser.reset_input_buffer()
+		#读取零线电流
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.z_current))
+		dd = self.__read()
+		if dd == '失败' :
+			data_dict['a_z'] = dd
+		else:
+			data_dict['a_z'] = dd/10
+		self.ser.reset_input_buffer()
+		#读取温度
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.temperature))
+		dd = self.__read()
+		if dd == '失败' :
+			data_dict['temp'] = dd
+		else:
+			data_dict['temp'] = dd*10
+		self.ser.reset_input_buffer()
+		#存储时间
+		data_dict['time'] = time.strftime('%Y-%m-%d %H:%M')
+		#关闭串口
+		self.ser.close()
+		#返回字典
+		return data_dict
+
+	def __read(self):
+		s = self.ser.read()
+		if s != b'':
+			while(ord(s) != 0x68):
+				s = self.ser.read()
+			for i in range(8):
+				s += self.ser.read()
+			L = self.ser.read()
+			s += L
+			for i in range(ord(L)+2):
+				s += self.ser.read()
+			result = self.DecodeMsg(s)
+			if result != False:
+				return result[1]
+			else:
+				return '失败'
+		else:
+			return '失败'
 
 	def __del__(self):
 		if self.ser.isOpen():

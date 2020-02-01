@@ -1,0 +1,55 @@
+<html>
+<head>
+  <title>三落大厦{{ data_dict['room'] }}室电表情况</title>
+</head>
+<body>
+  <h1>三落大厦{{ data_dict['room'] }}室电表情况</h1>
+  <table border="1px">
+    <tr>
+      <td>房号</td>
+      <td>{{ data_dict['room'] }}</td>
+    </tr>
+    <tr>
+      <td>电表号</td>
+      <td>{{ data_dict['number'] }}</td>
+    </tr>
+    <tr>
+      <td>当前电量读数</td>
+      <td>{{ data_dict['watt'] }}</td>
+    </tr>
+    <tr>
+        <td>上个月电量读数</td>
+        <td>{{ data_dict['prev_watt'] }}</td>
+    </tr>
+    <tr>
+        <td>有功功率</td>
+        <td>{{ data_dict['active_power'] }}</td>
+    </tr>
+    <tr>
+        <td>无功功率</td>
+        <td>{{ data_dict['reactive_power'] }}</td>
+    </tr>
+    <tr>
+        <td>功率因素</td>
+        <td>{{ data_dict['cos'] }}</td>
+    </tr>
+    <tr>
+        <td>A相电压</td>
+        <td>{{ data_dict['a_v'] }}</td>
+    </tr>
+    <tr>
+        <td>A相电流</td>
+        <td>{{ data_dict['a_i'] }}</td>
+    </tr>
+    <tr>
+        <td>零线电流</td>
+        <td>{{ data_dict['a_z'] }}</td>
+    </tr>
+    <tr>
+        <td>电表温度</td>
+        <td>{{ data_dict['temp'] }}</td>
+    </tr>
+  </table>
+  <h3>更新时间：{{ data_dict['time'] }}</h3>
+</body>
+</html>

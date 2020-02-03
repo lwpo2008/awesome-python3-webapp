@@ -68,7 +68,7 @@ class ReadMsg():
 		self.active_power = ('0x33','0x33','0x36','0x35')				#有功功率XX.XXXX
 		self.reactive_power = ('0x33','0x33','0x37','0x35')				#无功功率XX.XXXX
 		self.cos = ('0x33','0x33','0x39','0x35')						#功率因素X.XXX0
-		self.temperature = ('0x3B','0x33','0xB3','0x35')				#表内温度XXX.X
+		self.temperature = ('0x3A','0x33','0xB3','0x35')				#表内温度XXX.X
 
 	def CreatMsg(self,list,tuple):
 		msg = [hex(x) for x in bytes.fromhex(list[0])]	#地址，16进制数组转为字节串
@@ -239,7 +239,10 @@ class ReadMsg():
 		if dd == '失败' :
 			data_dict['a_i'] = dd
 		else:
-			data_dict['a_i'] = dd/10
+			if dd > 7999.99:
+				data_dict['a_i'] = (dd-8000.00)/(-10)
+			else:
+				data_dict['a_i'] = dd/10
 		self.ser.reset_input_buffer()
 		#读取零线电流
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.z_current))
@@ -247,7 +250,10 @@ class ReadMsg():
 		if dd == '失败' :
 			data_dict['a_z'] = dd
 		else:
-			data_dict['a_z'] = dd/10
+			if dd > 7999.99:
+				data_dict['a_z'] = (dd-8000.00)/(-10)
+			else:
+				data_dict['a_z'] = dd/10
 		self.ser.reset_input_buffer()
 		#读取温度
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.temperature))
@@ -255,7 +261,10 @@ class ReadMsg():
 		if dd == '失败' :
 			data_dict['temp'] = dd
 		else:
-			data_dict['temp'] = dd*10
+			if dd > 79.99:
+				data_dict['temp'] = (dd-80.00)*(-10)
+			else:
+				data_dict['temp'] = dd*10
 		self.ser.reset_input_buffer()
 		#存储时间
 		data_dict['time'] = time.strftime('%Y-%m-%d %H:%M')

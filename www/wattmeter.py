@@ -297,7 +297,6 @@ class ReadMsg():
 			data_dict['frezon_active_power'] = dd
 		else:
 			data_dict['frezon_active_power'] = dd/100
-			print(dd)
 		self.ser.reset_input_buffer()
 		#读取上一个冻结时间
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.frezon_time))

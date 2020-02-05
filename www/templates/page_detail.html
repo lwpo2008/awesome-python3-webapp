@@ -14,19 +14,35 @@
       <td>{{ data_dict['number'] }}</td>
     </tr>
     <tr>
-      <td>当前电量读数</td>
+      <td>当前电表日期</td>
+      <td>{{ data_dict['meter_date'] }}</td>
+    </tr>
+    <tr>
+      <td>当前电表时间</td>
+      <td>{{ data_dict['meter_time'] }}</td>
+    </tr>
+    <tr>
+      <td>当前电量读数(kWh）</td>
       <td>{{ data_dict['watt'] }}</td>
     </tr>
     <tr>
-        <td>上个月电量读数</td>
+        <td>上个月电量读数(kWh）</td>
         <td>{{ data_dict['prev_watt'] }}</td>
     </tr>
     <tr>
-        <td>有功功率</td>
+      <td>上一个冻结日数据(kWh）</td>
+      <td>{{ data_dict['frezon_active_power'] }}</td>
+    </tr>
+    <tr>
+        <td>上一个冻结日时间</td>
+        <td>{{ data_dict['frezon_time'] }}</td>
+    </tr>
+    <tr>
+        <td>有功功率(kW）</td>
         <td>{{ data_dict['active_power'] }}</td>
     </tr>
     <tr>
-        <td>无功功率</td>
+        <td>无功功率(kvar)</td>
         <td>{{ data_dict['reactive_power'] }}</td>
     </tr>
     <tr>
@@ -34,22 +50,29 @@
         <td>{{ data_dict['cos'] }}</td>
     </tr>
     <tr>
-        <td>A相电压</td>
+        <td>A相电压(V)</td>
         <td>{{ data_dict['a_v'] }}</td>
     </tr>
     <tr>
-        <td>A相电流</td>
+        <td>A相电流(A)</td>
         <td>{{ data_dict['a_i'] }}</td>
     </tr>
     <tr>
-        <td>零线电流</td>
+        <td>零线电流(A)</td>
         <td>{{ data_dict['a_z'] }}</td>
     </tr>
     <tr>
-        <td>电表温度</td>
+        <td>电表温度(°C)</td>
         <td>{{ data_dict['temp'] }}</td>
     </tr>
   </table>
   <h3>更新时间：{{ data_dict['time'] }}</h3>
+  <br>
+  <form action = '/page/{{data_dict["room"]}}' method="POST">
+    <p><button type="submit">电表校时</button></p>
+  </form>  
+  {% if message %}
+  <p style="color:red">{{ message }}</p>
+  {% endif %}
 </body>
 </html>

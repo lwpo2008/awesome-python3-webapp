@@ -27,6 +27,11 @@ def get_variable_data_from_meter(room):
 	wm = wattmeter.ReadMsg()
 	return wm.achieve_variable_data(room)
 
+def update_time():
+	wm = wattmeter.ReadMsg()
+	wm.broadcasting_time()
+	return '已更新电表时间'
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     return render_template('home.html',room_data=get_data_from_db())
@@ -34,6 +39,10 @@ def home():
 @app.route('/page/<string:page>', methods=['GET'])
 def room_detail(page):
     return render_template('page_detail.html', data_dict = get_variable_data_from_meter(page))
+
+@app.route('/page/<string:page>', methods=['POST'])
+def update_meter_time(page):
+    return render_template('page_detail.html',message = update_time(), data_dict = get_variable_data_from_meter(page))
 
 if __name__ == '__main__':
     app.run(host='192.168.1.77',port=1717,debug=False)

@@ -62,6 +62,11 @@ class ReadMsg():
 		self.zuhejiesuan2 = ('0x35','0x33','0x33','0x33')				#上2个结算日组合有功
 		self.zxjiesuan2 = ('0x35','0x33','0x34','0x33')					#上2个结算日正向有功
 
+		self.frezon_time = ('0x34','0x33','0x33','0x38')				#上一次定时冻结时间
+		self.frezon_active_power = ('0x34','0x34','0x33','0x38')		#上一次定时冻结数据
+		self.yymmddww = ('0x34','0x34','0x33','0x37')
+		self.hhmmss = ('0x35','0x34','0x33','0x37')
+
 		self.a_voltge = ('0x33','0x34','0x34','0x35')					#A相电压XXX.X
 		self.a_current = ('0x33','0x34','0x35','0x35')					#A相电流XXX.XXX0
 		self.z_current = ('0x34','0x33','0xB3','0x35')					#零线电流XXX.XXX0 
@@ -69,6 +74,10 @@ class ReadMsg():
 		self.reactive_power = ('0x33','0x33','0x37','0x35')				#无功功率XX.XXXX
 		self.cos = ('0x33','0x33','0x39','0x35')						#功率因素X.XXX0
 		self.temperature = ('0x3A','0x33','0xB3','0x35')				#表内温度XXX.X
+
+		#广播校对时间
+		#self.broadcasting_time()
+		#self.creat_frezon_daily_data()
 
 	def CreatMsg(self,list,tuple):
 		msg = [hex(x) for x in bytes.fromhex(list[0])]	#地址，16进制数组转为字节串
@@ -83,6 +92,70 @@ class ReadMsg():
 		msg=bytes([int(x,16) for x in msg])		#数组转为16进制字符串
 		return msg
 
+	#对所有电表广播，设置每日0点冻结电量
+	def creat_frezon_daily_data(self):
+		msg = ['0x68','0x99','0x99','0x99','0x99','0x99','0x99','0x68','0x16','0x04']	#广播地址
+		msg.append('0x33')					#分钟设置为0分冻结
+		msg.append('0x33')					#小时设置为0时冻结
+		msg.append('0xCC')					#日设置为99H+33H，表示任意
+		msg.append('0xCC')					#月设置为99H+33H，表示任意
+		msg.append(hex(sum([int(x,16) for x in msg])&0x00000000FF))	#校验码
+		msg.append('0x16')
+		msg.insert(0,'0xFE')
+		msg.insert(0,'0xFE')
+		msg.insert(0,'0xFE')
+		msg.insert(0,'0xFE')
+		msg=bytes([int(x,16) for x in msg])		#数组转为16进制字符串
+		#打开串口
+		if self.ser.isOpen():
+			pass
+		else:
+			self.ser.open()
+		self.ser.write(msg)
+		time.sleep(0.5)
+		self.ser.close()
+		return True
+
+	#广播校时
+	def broadcasting_time(self):
+		msg = ['0x68','0x99','0x99','0x99','0x99','0x99','0x99','0x68','0x08','0x06']
+		YY = time.strftime('0x%Y').replace('0x20','0x')			#去掉20开头
+		YY = hex(int(YY,16)+int('0x33',16))
+		MM = time.strftime('0x%m')
+		MM = hex(int(MM,16)+int('0x33',16))
+		DD = time.strftime('0x%d')
+		DD = hex(int(DD,16)+int('0x33',16))
+		hh = time.strftime('0x%H')
+		hh = hex(int(hh,16)+int('0x33',16))
+		mm = time.strftime('0x%M')
+		mm = hex(int(mm,16)+int('0x33',16))
+		ss = time.strftime('0x%S')
+		ss = hex(int(ss,16)+int('0x33',16))
+		msg.append(ss)		
+		msg.append(mm)		
+		msg.append(hh)					
+		msg.append(DD)
+		msg.append(MM)
+		msg.append(YY)
+		msg.append(hex(sum([int(x,16) for x in msg])&0x0000000000FF))	#校验码
+		msg.append('0x16')
+		msg.insert(0,'0xFE')
+		msg.insert(0,'0xFE')
+		msg.insert(0,'0xFE')
+		msg.insert(0,'0xFE')
+		msg=bytes([int(x,16) for x in msg])		#数组转为16进制字符串
+		#打开串口
+		if self.ser.isOpen():
+			pass
+		else:
+			self.ser.open()
+		self.ser.write(msg)
+		time.sleep(0.5)
+		self.ser.flushOutput()
+		self.ser.close()
+		return True
+
+	#解码函数
 	def DecodeMsg(self,by):											#str为字节串
 		msg = [x for x in bytes(by)]								#转为16进制数组
 		while msg[0] != 0x68:	msg.pop(0)							#去除开头的唤醒数据
@@ -99,34 +172,11 @@ class ReadMsg():
 			dl.reverse()
 			dl = [x-0x33 for x in dl]								#接收方，减0x33处理
 			dl = [(x>>4&0x0F)*10+(x&0x0F) for x in dl]				#BCD码转换公式
-			result = 0.0
+			result = 0
 			for x in dl[:-4]:			
 				result = result*100+x
-			return address,result/100
+			return address,result
 		return address
-
-	def send(self):
-		if self.ser.isOpen():
-			pass
-		else:
-			self.ser.open()
-		#开始读表
-		for k,v in self.dianbiao.items():
-			#读取正向有功
-			self.ser.write(self.CreatMsg(self.dianbiao[k],self.zhengxiang))
-			s = self.ser.readline()
-			if s == b'':
-				self.dianbiao[k][1] = '失败'
-			else:
-				self.dianbiao[k][1] = self.DecodeMsg(s)[1]
-			#读取上一个结算日正向有功
-			self.ser.write(self.CreatMsg(self.dianbiao[k],self.zxjiesuan1))
-			s = self.ser.readline()
-			if s == b'':
-				self.dianbiao[k][2] = '失败'
-			else:
-				self.dianbiao[k][2] = self.DecodeMsg(s)[1]
-		self.ser.close()
 
 	def achieve(self):
 		#打开串口
@@ -149,7 +199,7 @@ class ReadMsg():
 					s += self.ser.read()
 				result = self.DecodeMsg(s)
 				if result != False:
-					self.dianbiao[room][1] = result[1]
+					self.dianbiao[room][1] = result[1]/100
 				else:
 					self.dianbiao[room][1] = '失败'
 			else:
@@ -169,7 +219,7 @@ class ReadMsg():
 					s += self.ser.read()
 				result = self.DecodeMsg(s)
 				if result != False:
-					self.dianbiao[room][2] = result[1]
+					self.dianbiao[room][2] = result[1]/100
 				else:
 					self.dianbiao[room][2] = '失败'
 			else:
@@ -187,8 +237,12 @@ class ReadMsg():
 		#创建字典读取数据
 		data_dict = {'room':room,
 					 'number':self.dianbiao[room][0],
+					 'meter_date':'none',
+					 'meter_time':'none',
 					 'watt':-1.00,
 					 'prev_watt':-1.00,
+					 'frezon_active_power':-1.00,
+					 'frezon_time':'none',
 					 'active_power':-1.00,
 					 'reactive_power':-1.00,
 					 'cos':-1.00,
@@ -199,11 +253,64 @@ class ReadMsg():
 					 'time':'none'}
 		#读取正向有功电量
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.zhengxiang))
-		data_dict['watt'] = self.__read()
+		dd = self.__read()
+		if dd == '失败':
+			data_dict['watt'] = dd
+		else:
+			data_dict['watt'] = dd/100
 		self.ser.reset_input_buffer()
 		#读取上个月正向有功电量
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.zxjiesuan1))
-		data_dict['prev_watt'] = self.__read()
+		dd = self.__read()
+		if dd == '失败':
+			data_dict['prev_watt'] = dd
+		else:
+			data_dict['prev_watt'] = dd/100
+		self.ser.reset_input_buffer()
+		#读取电表日期
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.yymmddww))
+		dd = self.__read()
+		if dd == '失败':
+			data_dict['meter_date'] = dd
+		else:
+			yy = int(dd/1000000)
+			mm = int(dd/10000)-yy*100
+			d = int(dd/100) - yy*10000 - mm*100
+			ww = int(dd) - yy*1000000 - mm*10000 -d*100
+			data_dict['meter_date'] = str(yy) + '年' + str(mm) + '月' + str(d) + '日 星期' + str(ww)
+		self.ser.reset_input_buffer()
+		#读取电表时间
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.hhmmss))
+		dd = self.__read()
+		if dd == '失败':
+			data_dict['meter_time'] = dd
+		else:
+			hh = int(dd/10000)
+			mm = int(dd/100)-hh*100
+			ss = int(dd) - hh*10000 - mm*100
+			data_dict['meter_time'] = str(hh) + '时' + str(mm) + '分' + str(ss) + '秒'
+		self.ser.reset_input_buffer()
+		#读取上一个冻结日有功数据
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.frezon_active_power))
+		dd = self.__read_frezon_data()
+		if dd == '失败':
+			data_dict['frezon_active_power'] = dd
+		else:
+			data_dict['frezon_active_power'] = dd/100
+			print(dd)
+		self.ser.reset_input_buffer()
+		#读取上一个冻结时间
+		self.ser.write(self.CreatMsg(self.dianbiao[room],self.frezon_time))
+		dd = self.__read()
+		if dd == '失败':
+			data_dict['frezon_time'] = dd
+		else:
+			yy = int(dd/100000000)
+			mm = int(dd/1000000)-yy*100
+			d = int(dd/10000) - yy*10000 - mm*100
+			hh = int(dd/100) - yy*1000000 - mm*10000 -d*100
+			MM = int(dd) - yy*100000000 - mm*1000000 -d*10000 - hh*100
+			data_dict['frezon_time'] = str(yy) + '年' + str(mm) + '月' + str(d) + '日' + str(hh) + '时' + str(MM) + '分'
 		self.ser.reset_input_buffer()
 		#读取有功功率
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.active_power))
@@ -211,11 +318,21 @@ class ReadMsg():
 		if dd == '失败' :
 			data_dict['active_power'] = dd
 		else:
-			data_dict['active_power'] = dd/100
+			if dd > 799999:
+				data_dict['active_power'] = (dd-800000)/(-10000)
+			else:
+				data_dict['active_power'] = dd/10000
 		self.ser.reset_input_buffer()
 		#读取无功功率
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.reactive_power))
-		data_dict['reactive_power'] = self.__read()
+		dd = self.__read()
+		if dd == '失败' :
+			data_dict['reactive_power'] = dd
+		else:
+			if dd > 799999:
+				data_dict['reactive_power'] = (dd-800000)/(-10000)
+			else:
+				data_dict['reactive_power'] = dd/10000
 		self.ser.reset_input_buffer()
 		#读取功率因素
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.cos))
@@ -223,7 +340,7 @@ class ReadMsg():
 		if dd == '失败' :
 			data_dict['cos'] = dd
 		else:
-			data_dict['cos'] = dd/10
+			data_dict['cos'] = dd/1000
 		self.ser.reset_input_buffer()
 		#读取电压
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.a_voltge))
@@ -231,7 +348,7 @@ class ReadMsg():
 		if dd == '失败' :
 			data_dict['a_v'] = dd
 		else:
-			data_dict['a_v'] = dd*10
+			data_dict['a_v'] = dd/10
 		self.ser.reset_input_buffer()
 		#读取a电流
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.a_current))
@@ -239,10 +356,10 @@ class ReadMsg():
 		if dd == '失败' :
 			data_dict['a_i'] = dd
 		else:
-			if dd > 7999.99:
-				data_dict['a_i'] = (dd-8000.00)/(-10)
+			if dd > 799999:
+				data_dict['a_i'] = (dd-800000)/(-1000)
 			else:
-				data_dict['a_i'] = dd/10
+				data_dict['a_i'] = dd/1000
 		self.ser.reset_input_buffer()
 		#读取零线电流
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.z_current))
@@ -250,10 +367,10 @@ class ReadMsg():
 		if dd == '失败' :
 			data_dict['a_z'] = dd
 		else:
-			if dd > 7999.99:
-				data_dict['a_z'] = (dd-8000.00)/(-10)
+			if dd > 799999:
+				data_dict['a_z'] = (dd-800000)/(-1000)
 			else:
-				data_dict['a_z'] = dd/10
+				data_dict['a_z'] = dd/1000
 		self.ser.reset_input_buffer()
 		#读取温度
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.temperature))
@@ -261,10 +378,10 @@ class ReadMsg():
 		if dd == '失败' :
 			data_dict['temp'] = dd
 		else:
-			if dd > 79.99:
-				data_dict['temp'] = (dd-80.00)*(-10)
+			if dd > 7999:
+				data_dict['temp'] = (dd-8000)/(-10)
 			else:
-				data_dict['temp'] = dd*10
+				data_dict['temp'] = dd/10
 		self.ser.reset_input_buffer()
 		#存储时间
 		data_dict['time'] = time.strftime('%Y-%m-%d %H:%M')
@@ -272,7 +389,7 @@ class ReadMsg():
 		self.ser.close()
 		#返回字典
 		return data_dict
-
+	#读取电表数据
 	def __read(self):
 		s = self.ser.read()
 		if s != b'':
@@ -286,9 +403,45 @@ class ReadMsg():
 				s += self.ser.read()
 			result = self.DecodeMsg(s)
 			if result != False:
-				return result[1]
+				return int(result[1])
 			else:
 				return '失败'
+		else:
+			return '失败'
+	#读取冻结数据（由于冻结数据是所有冻结量传过来的，所以需要另外处理）
+	def __read_frezon_data(self):
+		s = self.ser.read()
+		if s != b'':
+			while(ord(s) != 0x68):
+				s = self.ser.read()
+			for i in range(8):
+				s += self.ser.read()
+			L = self.ser.read()
+			s += L
+			for i in range(ord(L)+2):
+				s += self.ser.read()
+			#接收完毕，下面开始处理
+			msg = [x for x in bytes(s)]									#转为16进制数组
+			while msg[0] != 0x68:	msg.pop(0)							#去除开头的唤醒数据
+			#校验数据是否正确，若不正确，则返回False
+			if msg[-2] != (sum(x for x in msg[:-2])&0x00000000FF):		#计算校验码
+				return '失败'
+			
+			address = msg[1:7]											#获取电表地址
+			address.reverse()											#改为大端在前
+			address = [(x>>4&0x0F)*10+(x&0x0F) for x in address]		#BCD码转换公式
+			address = ''.join(str(x) for x in address)
+			if msg[8] == 0x91 :
+				dl = msg[10:-2]
+				dl.reverse()
+				dl = dl[0:8]											#本函数只取第一个冻结的正向有功电能
+				dl = [x-0x33 for x in dl]								#接收方，减0x33处理
+				dl = [(x>>4&0x0F)*10+(x&0x0F) for x in dl]				#BCD码转换公式
+				result = 0
+				for x in dl[:-4]:			
+					result = result*100+x
+				return result
+			return '失败'
 		else:
 			return '失败'
 

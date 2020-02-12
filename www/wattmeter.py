@@ -21,7 +21,11 @@ class ReadMsg():
 		except:
 			#初始化失败标志
 			self.status = False
-
+		#初始化之后关闭串口，要使用时再打开
+		if self.ser.isOpen():
+			self.ser.close()
+		else:
+			pass
 		#初始化电表字典
 		self.dianbiao = {
 				'201':['091701262304','-1','-1'],
@@ -53,7 +57,15 @@ class ReadMsg():
 				'1501':['010097796152','-1','-1'],
 				'1502':['010097796152','-1','-1']
 				}
-
+		self.week_convert = {
+			'0':'日',
+			'1':'一',
+			'2':'二',
+			'3':'三',
+			'4':'四',
+			'5':'五',
+			'6':'六'
+		}
 		#设置tuple，存储读取数据块命令
 		self.zuheyougong = ('0x33','0x33','0x33','0x33')				#组合有功
 		self.zhengxiang = ('0x33','0x33','0x34','0x33')					#正向有功
@@ -277,7 +289,7 @@ class ReadMsg():
 			mm = int(dd/10000)-yy*100
 			d = int(dd/100) - yy*10000 - mm*100
 			ww = int(dd) - yy*1000000 - mm*10000 -d*100
-			data_dict['meter_date'] = str(yy) + '年' + str(mm) + '月' + str(d) + '日 星期' + str(ww)
+			data_dict['meter_date'] = str(yy) + '年' + str(mm) + '月' + str(d) + '日 星期' + self.week_convert[str(ww)]
 		self.ser.reset_input_buffer()
 		#读取电表时间
 		self.ser.write(self.CreatMsg(self.dianbiao[room],self.hhmmss))

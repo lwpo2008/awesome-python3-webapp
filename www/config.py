@@ -94,7 +94,7 @@ class Config :
 		if self.connStat == False : return False
 
 		sql = 'create table ' + self.table + ' (id integer PRIMARY KEY autoincrement, room text, number varchar(500), total_power varchar(500), prev_power varchar(500), udrate int(1), udtime varchar(100))'
-		self.cur.execute(sql);
+		self.cur.execute(sql)
 
 		room = ''
 		number = ''

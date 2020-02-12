@@ -3,8 +3,11 @@
 from flask import Flask, request, render_template
 import wattmeter
 import config
+import time
 
 app = Flask(__name__)
+
+wm = wattmeter.ReadMsg()
 
 def get_data_from_db():
 	cfg = config.Config()
@@ -24,18 +27,23 @@ def get_data_from_db():
 	return ROOM_DATA2
 
 def get_variable_data_from_meter(room):
-	wm = wattmeter.ReadMsg()
+	#等待串口空闲
+	while wm.ser.isOpen():
+		time.sleep(1)
 	return wm.achieve_variable_data(room)
 
 def update_time():
-	wm = wattmeter.ReadMsg()
+	#等待串口空闲
+	while wm.ser.isOpen():
+		time.sleep(1)
+	#更新时间
 	wm.broadcasting_time()
 	return '已更新电表时间'
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
     return render_template('home.html',room_data=get_data_from_db())
-	
+
 @app.route('/page/<string:page>', methods=['GET'])
 def room_detail(page):
     return render_template('page_detail.html', data_dict = get_variable_data_from_meter(page))
